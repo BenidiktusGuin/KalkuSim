@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --notion-bg: #fbfbfa;
+    --notion-surface: #ffffff;
+    --notion-surface-hover: #f1f1ef;
+    --notion-border: #e9e9e7;
+    --notion-border-strong: #d3d3d0;
+    --notion-text: #37352f;
+    --notion-text-muted: #787774;
+    --notion-text-subtle: #9b9a97;
+    --notion-accent: #6d28d9;
+    --notion-accent-soft: #f5f3ff;
+    --notion-red: #eb5757;
+    --notion-red-soft: #fdf5f5;
+    --notion-green: #0f7b6c;
+    --notion-green-soft: #edf7f5;
+    --notion-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --notion-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  body {
+    background-color: var(--notion-bg);
+    color: var(--notion-text);
+    font-family: var(--notion-font-sans);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+}
+
+/* MathLive styling customization for sleek Notion integration */
+math-field {
+  display: block;
+  font-size: 1.45rem;
+  padding: 14px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--notion-border-strong);
+  background: #ffffff;
+  color: var(--notion-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease-in-out;
+  outline: none;
+  min-height: 56px;
+}
+
+math-field:focus-within {
+  border-color: var(--notion-accent);
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.15);
+}
+
+math-field::part(virtual-keyboard-toggle) {
+  display: none;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d2;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b5b5b2;
+}
