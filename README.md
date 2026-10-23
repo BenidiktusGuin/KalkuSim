@@ -1,4 +1,4 @@
-# KalkuSim 📐
+# KalkuSim 
 
 > A simple, interactive, formula-based batch calculator inspired by the calm, minimalist interface of Notion.
 
@@ -6,7 +6,7 @@ KalkuSim is a lightweight alternative to Excel for university students, engineer
 
 ---
 
-## ✨ Features
+## Features
 
 - **Screen 1: Visual Formula Editor**
   - Powered by MathLive with visual notation (fractions, exponents, roots, parentheses).
@@ -36,7 +36,7 @@ KalkuSim is a lightweight alternative to Excel for university students, engineer
 
 ---
 
-## 🛠️ Technology Stack & Architecture
+## Technology Stack & Architecture
 
 - **React 19 + TypeScript**: Type-safe components and state management.
 - **Vite 8**: Rapid development and production bundling.
@@ -85,7 +85,7 @@ src/
 
 ---
 
-## 📐 Mathematical Safety & Conventions
+## Mathematical Safety & Conventions
 
 1. **No `eval()`**: All expressions are parsed into an Abstract Syntax Tree (AST) using `mathjs.parse()` and evaluated using `mathjs.evaluate()` within a controlled scope.
 2. **Trigonometric Convention**: Uses **Radians** by default. A compact toggle beside the formula editor allows switching between radian and degree mode. In degree mode, angles are mapped deterministically via radian conversion.
@@ -94,7 +94,7 @@ src/
 
 ---
 
-## 🚀 Running the Project
+## Running the Project
 
 ### Install Dependencies
 ```bash
