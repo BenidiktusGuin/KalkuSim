@@ -3,6 +3,8 @@
  * Handles nested fractions, roots, subscripts, powers, trigonometric functions, and LaTeX macros.
  */
 
+import { parse } from 'mathjs';
+
 /**
  * Extracts content inside balanced curly braces `{...}` starting at startIndex (which points to `{`).
  */
@@ -303,20 +305,32 @@ export function latexToMathjs(rawLatex: string): string {
   return s;
 }
 
+const ESCAPED_SUBSCRIPT = /\\_([A-Za-z0-9]+)/g;
+const SINGLE_LETTER_MATHRM = /\\mathrm\{([A-Za-z])\}/g;
+
 /**
- * Converts a mathjs expression into a displayable LaTeX string
- * for rendering in MathLive or visual preview.
+ * Mengubah ekspresi mathjs menjadi LaTeX tampilan melalui AST mathjs.
+ * Struktur matematika (pecahan, akar, pangkat) dihasilkan oleh toTex(),
+ * bukan oleh penggantian string manual.
  */
+export function expressionToLatex(expr: string): string {
+  const source = expr?.trim();
+  if (!source) return '';
+
+  try {
+    return parse(source)
+      .toTex({ parenthesis: 'auto' })
+      .replace(ESCAPED_SUBSCRIPT, '_{$1}')
+      .replace(SINGLE_LETTER_MATHRM, ' $1')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    const escaped = source.replace(/([\\{}])/g, '\\$1');
+    return `\\text{${escaped}}`;
+  }
+}
+
+/** Nama lama dipertahankan agar import lain tidak rusak. */
 export function mathjsToLatex(expr: string): string {
-  if (!expr || !expr.trim()) return '';
-  // Replace simple patterns
-  let l = expr.trim();
-  l = l.replace(/\*/g, ' \\cdot ');
-  l = l.replace(/\bsqrt\(([^)]+)\)/g, '\\sqrt{$1}');
-  l = l.replace(/\bnthRoot\(([^,]+),\s*([^)]+)\)/g, '\\sqrt[$2]{$1}');
-  l = l.replace(/\blog10\(([^)]+)\)/g, '\\log_{10}($1)');
-  l = l.replace(/\blog\(([^)]+)\)/g, '\\ln($1)');
-  l = l.replace(/\bpi\b/g, '\\pi');
-  l = l.replace(/_([a-zA-Z0-9]+)/g, '_{$1}');
-  return l;
+  return expressionToLatex(expr);
 }

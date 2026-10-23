@@ -1,8 +1,16 @@
 import * as React from 'react';
 
+export interface MathFieldElementTarget extends HTMLElement {
+  value: string;
+  smartMode: boolean;
+  virtualKeyboardMode: string;
+  getValue(format?: string): string;
+  setValue(value: string, options?: { silenceNotifications?: boolean }): void;
+  executeCommand(command: string | [string, ...unknown[]]): void;
+}
+
 type MathFieldAttributes = React.HTMLAttributes<HTMLElement> & {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ref?: React.Ref<any>;
+  ref?: React.Ref<MathFieldElementTarget>;
   class?: string;
   disabled?: boolean;
   'read-only'?: boolean;

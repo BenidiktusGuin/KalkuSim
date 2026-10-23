@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * Komponen    : App
+ * Lapisan     : Komponen Utama (Root Application)
+ *
+ * Deskripsi:
+ * Mengelola state global KalkuSim: rumus aktif, deteksi variabel AST,
+ * baris batch data, mode sudut (rad/deg), navigasi langkah (ScreenStep),
+ * serta persistensi riwayat perhitungan di localStorage.
+ * ============================================================================
+ */
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header } from './components/common/Header';
 import { HistoryDrawer } from './components/common/HistoryDrawer';
@@ -7,14 +19,82 @@ import { ResultsScreen } from './components/screen3/ResultsScreen';
 import { parseFormula } from './engine/formulaParser';
 import { calculateBatch } from './engine/calculator';
 import type { AngleMode, BatchRow, CalculationBatchResult, HistoryItem, ScreenStep } from './types';
-import type { FormulaPreset } from './engine/mathConstants';
-import { FORMULA_PRESETS } from './engine/mathConstants';
 
 const LOCAL_STORAGE_HISTORY_KEY = 'calcbatch_history_v1';
 
-// Initial default preset (Kinematics)
-const DEFAULT_PRESET = FORMULA_PRESETS[0];
+const STEPS: Array<{ id: ScreenStep; label: string }> = [
+  { id: 'formula', label: 'Rumus' },
+  { id: 'variables', label: 'Variabel' },
+  { id: 'results', label: 'Hasil' },
+];
 
+interface StepIndicatorProps {
+  currentStep: ScreenStep;
+  canOpenVariables: boolean;
+  canOpenResults: boolean;
+  onChange: (step: ScreenStep) => void;
+}
+
+const StepIndicator: React.FC<StepIndicatorProps> = ({
+  currentStep,
+  canOpenVariables,
+  canOpenResults,
+  onChange,
+}) => {
+  const enabled: Record<ScreenStep, boolean> = {
+    formula: true,
+    variables: canOpenVariables,
+    results: canOpenResults,
+  };
+
+  return (
+    <nav
+      aria-label="Langkah perhitungan"
+      className="mb-10 flex flex-wrap items-center gap-x-7 gap-y-2 text-sm"
+    >
+      {STEPS.map((step, index) => {
+        const active = currentStep === step.id;
+        const isEnabled = enabled[step.id];
+
+        return (
+          <button
+            key={step.id}
+            type="button"
+            onClick={() => isEnabled && onChange(step.id)}
+            disabled={!isEnabled}
+            aria-current={active ? 'step' : undefined}
+            className={`flex items-baseline gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6D28D9]/30 focus-visible:ring-offset-2 ${
+              active
+                ? 'text-[#2F3437]'
+                : isEnabled
+                  ? 'text-[#9CA3AF] hover:text-[#6B7280]'
+                  : 'cursor-not-allowed text-[#D3D3D0]'
+            }`}
+          >
+            <span className="text-[11px] font-semibold tabular-nums tracking-[0.08em]">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span
+              className={
+                active
+                  ? 'border-b border-[#6D28D9] pb-0.5 font-semibold'
+                  : 'font-medium'
+              }
+            >
+              {step.label}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+};
+
+/**
+ * Komponen induk aplikasi KalkuSim.
+ *
+ * @returns Tampilan antarmuka utama berbasis alur langkah 3-layar.
+ */
 export const App: React.FC = () => {
   // Navigation
   const [currentStep, setCurrentStep] = useState<ScreenStep>('formula');
@@ -22,8 +102,8 @@ export const App: React.FC = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Formula state
-  const [formulaInput, setFormulaInput] = useState<string>(DEFAULT_PRESET.formula);
-  const [latexInput, setLatexInput] = useState<string>(DEFAULT_PRESET.latex);
+  const [formulaInput, setFormulaInput] = useState<string>('');
+  const [latexInput, setLatexInput] = useState<string>('');
 
   // Parse formula dynamically
   const analysis = useMemo(() => {
@@ -31,12 +111,11 @@ export const App: React.FC = () => {
   }, [formulaInput, latexInput]);
 
   // Batch rows state (Max 10 rows)
-  const [rows, setRows] = useState<BatchRow[]>(() => {
-    return DEFAULT_PRESET.sampleRows.map((sample, idx) => ({
-      id: `row-${Date.now()}-${idx}`,
-      values: { ...sample },
-    }));
-  });
+  const [rows, setRows] = useState<BatchRow[]>(() => [
+    { id: 'row-initial-1', values: {} },
+    { id: 'row-initial-2', values: {} },
+    { id: 'row-initial-3', values: {} },
+  ]);
 
   // Batch calculation result
   const [batchResult, setBatchResult] = useState<CalculationBatchResult | null>(null);
@@ -109,45 +188,6 @@ export const App: React.FC = () => {
       prev.map((r) => ({
         id: r.id,
         values: {},
-      }))
-    );
-  };
-
-  const handleFillSampleData = () => {
-    // Check if current formula matches any preset
-    const matchingPreset = FORMULA_PRESETS.find(
-      (p) => p.formula.replace(/\s+/g, '') === formulaInput.replace(/\s+/g, '')
-    );
-
-    if (matchingPreset && matchingPreset.sampleRows.length > 0) {
-      setRows(
-        matchingPreset.sampleRows.map((sample, idx) => ({
-          id: `row-${Date.now()}-${idx}`,
-          values: { ...sample },
-        }))
-      );
-    } else {
-      // Generate sensible incrementing sample numbers for detected variables
-      setRows((prev) =>
-        prev.map((row, idx) => {
-          const vals: Record<string, string> = {};
-          analysis.inputVariables.forEach((v, vIdx) => {
-            vals[v] = String((idx + 1) * (vIdx + 2) * 5);
-          });
-          return { ...row, values: vals };
-        })
-      );
-    }
-  };
-
-  // Preset Selection
-  const handleLoadPreset = (preset: FormulaPreset) => {
-    setFormulaInput(preset.formula);
-    setLatexInput(preset.latex);
-    setRows(
-      preset.sampleRows.map((sample, idx) => ({
-        id: `row-${Date.now()}-${idx}`,
-        values: { ...sample },
       }))
     );
   };
@@ -243,64 +283,65 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FBFBFA] flex flex-col font-sans text-[#37352F]">
-      {/* Notion Top Navigation Header */}
+      {/* 1. Header Minimalis (Brand di kiri, Riwayat di kanan) */}
       <Header
-        currentStep={currentStep}
-        onNavigateStep={setCurrentStep}
-        canNavigateVariables={analysis.isValid}
-        canNavigateResults={batchResult !== null}
-        angleMode={angleMode}
-        onToggleAngleMode={() => setAngleMode((prev) => (prev === 'rad' ? 'deg' : 'rad'))}
         savedHistoryCount={history.length}
         onOpenHistory={() => setIsHistoryOpen(true)}
       />
 
-      {/* Main Content Area */}
+      {/* 2. Main Workspace */}
       <main className="flex-1">
-        {currentStep === 'formula' && (
-          <FormulaScreen
-            formulaInput={formulaInput}
-            latexInput={latexInput}
-            onFormulaChange={handleFormulaChange}
-            analysis={analysis}
-            onNext={handleNextToVariables}
-            onLoadPreset={handleLoadPreset}
+        <div className="mx-auto w-full max-w-6xl px-5 pb-20 pt-8 sm:px-8 sm:pt-10">
+          <StepIndicator
+            currentStep={currentStep}
+            canOpenVariables={analysis.isValid}
+            canOpenResults={batchResult !== null}
+            onChange={(step) => {
+              if (step === 'formula') setCurrentStep('formula');
+              if (step === 'variables' && analysis.isValid) setCurrentStep('variables');
+              if (step === 'results' && batchResult !== null) setCurrentStep('results');
+            }}
           />
-        )}
 
-        {currentStep === 'variables' && (
-          <VariableScreen
-            analysis={analysis}
-            rows={rows}
-            onUpdateCell={handleUpdateCell}
-            onAddRow={handleAddRow}
-            onRemoveRow={handleRemoveRow}
-            onDuplicateRow={handleDuplicateRow}
-            onFillSampleData={handleFillSampleData}
-            onClearRows={handleClearRows}
-            onBack={() => setCurrentStep('formula')}
-            onCalculate={handleCalculateBatch}
-          />
-        )}
+          {currentStep === 'formula' && (
+            <FormulaScreen
+              formulaInput={formulaInput}
+              latexInput={latexInput}
+              onFormulaChange={handleFormulaChange}
+              analysis={analysis}
+              onNext={handleNextToVariables}
+              angleMode={angleMode}
+              onToggleAngleMode={() =>
+                setAngleMode((prev) => (prev === 'rad' ? 'deg' : 'rad'))
+              }
+            />
+          )}
 
-        {currentStep === 'results' && batchResult && (
-          <ResultsScreen
-            batch={batchResult}
-            onNewCalculation={handleNewCalculation}
-            onEditInputs={() => setCurrentStep('variables')}
-            onSaveToHistory={handleSaveToHistory}
-            isAlreadySaved={isCurrentBatchSaved}
-          />
-        )}
-      </main>
+          {currentStep === 'variables' && (
+            <VariableScreen
+              analysis={analysis}
+              rows={rows}
+              onUpdateCell={handleUpdateCell}
+              onAddRow={handleAddRow}
+              onRemoveRow={handleRemoveRow}
+              onDuplicateRow={handleDuplicateRow}
+              onClearRows={handleClearRows}
+              onBack={() => setCurrentStep('formula')}
+              onCalculate={handleCalculateBatch}
+            />
+          )}
 
-      {/* Notion-style Footer */}
-      <footer className="w-full border-t border-[#E9E9E7] py-4 bg-white/60 text-center text-xs text-[#9B9A97]">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>CalcBatch — Kalkulator Batch Rumus Matematika</span>
-          <span>Mesin matematika deterministik didukung oleh mathjs • Lokal & privat</span>
+          {currentStep === 'results' && batchResult && (
+            <ResultsScreen
+              batch={batchResult}
+              onNewCalculation={handleNewCalculation}
+              onEditInputs={() => setCurrentStep('variables')}
+              onSaveToHistory={handleSaveToHistory}
+              isAlreadySaved={isCurrentBatchSaved}
+            />
+          )}
         </div>
-      </footer>
+      </main>
 
       {/* History Slide-over Drawer */}
       <HistoryDrawer
