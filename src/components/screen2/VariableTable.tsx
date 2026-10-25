@@ -312,7 +312,6 @@ export const VariableTable: React.FC<VariableTableProps> = ({
                       >
                         <input
                           type="text"
-                          inputMode="decimal"
                           value={rawVal}
                           onChange={(e) =>
                             onUpdateCell(row.id, v, e.target.value)
@@ -323,6 +322,9 @@ export const VariableTable: React.FC<VariableTableProps> = ({
                           placeholder="0 atau 0,5"
                           aria-label={`${v} baris ${index + 1}`}
                           aria-invalid={invalid}
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
                           className={`w-full border-0 border-b bg-transparent px-0 py-2 text-base tabular-nums text-[#2F3437] placeholder:text-[#C7C7C4] focus:outline-none ${
                             invalid
                               ? 'border-[#EB5757] text-[#B42318]'
