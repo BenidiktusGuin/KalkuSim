@@ -44,7 +44,12 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
 }) => {
   const mathFieldRef = useRef<MathFieldElementTarget | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
-  const [editorMode, setEditorMode] = useState<"visual" | "text">("visual");
+  const [editorMode, setEditorMode] = useState<"visual" | "text">(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(any-pointer: coarse)").matches
+      ? "text"
+      : "visual"
+  );
   const [textInput, setTextInput] = useState(value);
 
   // Sync external value changes into textInput
@@ -76,7 +81,16 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
 
     // Configure mathfield options
     mf.smartMode = true;
-    mf.virtualKeyboardMode = "manual";
+    // MathLive's own virtual keyboard only opens when explicitly requested.
+    mf.mathVirtualKeyboardPolicy = "manual";
+
+    // MathLive hard-codes inputmode="none" on its hidden keyboard sink.
+    // Enable the device keyboard so tablet/phone users can type formulas
+    // with their normal keyboard instead of MathLive's math keyboard.
+    const keyboardSink = mf.shadowRoot?.querySelector<HTMLElement>(
+      '[part="keyboard-sink"]'
+    );
+    keyboardSink?.setAttribute("inputmode", "text");
 
     const handleInput = () => {
       const newLatex = mf.getValue("latex");
@@ -244,6 +258,9 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
             value={textInput}
             onChange={handleTextChange}
             placeholder="Contoh: v_0 * t + 0.5 * a * t^2"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             className="w-full rounded-lg border border-[#D3D3D0] bg-white px-4 py-3.5 text-lg text-[#2F3437] shadow-xs transition-all placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#6D28D9]/20 focus:border-[#6D28D9] sm:text-xl"
           />
         )}

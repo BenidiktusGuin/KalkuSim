@@ -3,7 +3,7 @@ import * as React from 'react';
 export interface MathFieldElementTarget extends HTMLElement {
   value: string;
   smartMode: boolean;
-  virtualKeyboardMode: string;
+  mathVirtualKeyboardPolicy: 'auto' | 'manual' | 'sandboxed';
   getValue(format?: string): string;
   setValue(value: string, options?: { silenceNotifications?: boolean }): void;
   executeCommand(command: string | [string, ...unknown[]]): void;
