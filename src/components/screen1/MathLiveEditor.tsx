@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "mathlive";
 import { Undo2, Redo2, RotateCcw, Code2, Sparkles } from "lucide-react";
 import { latexToMathjs, expressionToLatex } from "../../engine/latexConverter";
@@ -44,13 +44,28 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
 }) => {
   const mathFieldRef = useRef<MathFieldElementTarget | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
-  const [editorMode, setEditorMode] = useState<"visual" | "text">(() =>
-    typeof window !== "undefined" &&
-    window.matchMedia?.("(any-pointer: coarse)").matches
-      ? "text"
-      : "visual"
-  );
+  const [editorMode, setEditorMode] = useState<"visual" | "text">("visual");
   const [textInput, setTextInput] = useState(value);
+
+  /**
+   * MathLive menonaktifkan keyboard bawaan perangkat lewat atribut
+   * `inputmode="none"` pada keyboard sink (area tak terlihat yang menerima
+   * ketikan). Ubah menjadi `text` agar keyboard bawaan HP/tablet muncul,
+   * sementara tampilan rumus tetap visual.
+   *
+   * MathLive baru memfokuskan sink ±60 ms setelah math-field disentuh. Di iOS
+   * fokus seperti itu bisa diabaikan karena bukan lagi bagian dari gestur
+   * pengguna, jadi kita fokuskan sink langsung saat field diklik.
+   */
+  const configureNativeKeyboard = useCallback((focusSink: boolean) => {
+    const sink = mathFieldRef.current?.shadowRoot?.querySelector<HTMLElement>(
+      '[part="keyboard-sink"]'
+    );
+    if (!sink) return;
+
+    sink.setAttribute("inputmode", "text");
+    if (focusSink) sink.focus({ preventScroll: true });
+  }, []);
 
   // Sync external value changes into textInput
   useEffect(() => {
@@ -87,10 +102,7 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
     // MathLive hard-codes inputmode="none" on its hidden keyboard sink.
     // Enable the device keyboard so tablet/phone users can type formulas
     // with their normal keyboard instead of MathLive's math keyboard.
-    const keyboardSink = mf.shadowRoot?.querySelector<HTMLElement>(
-      '[part="keyboard-sink"]'
-    );
-    keyboardSink?.setAttribute("inputmode", "text");
+    configureNativeKeyboard(false);
 
     const handleInput = () => {
       const newLatex = mf.getValue("latex");
@@ -101,11 +113,28 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
 
     mf.addEventListener("input", handleInput);
 
+    // Focus the sink at the end of the tap (the `click` phase, after the
+    // browser's own focus handling) so the device keyboard reliably opens on
+    // iOS. Focusing earlier can be undone by the synthesized mousedown.
+    const handleFieldClick = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (
+        target?.closest(
+          '[part="virtual-keyboard-toggle"],[part="menu-toggle"]'
+        )
+      ) {
+        return;
+      }
+      configureNativeKeyboard(true);
+    };
+    mf.addEventListener("click", handleFieldClick, { capture: true });
+
     // Expose insertion method to parent ref
     if (onInsertRef) {
       onInsertRef.current = (latexSnippet: string, plainSnippet: string) => {
         if (editorMode === "visual" && mathFieldRef.current) {
           mathFieldRef.current.focus();
+          configureNativeKeyboard(true);
           mathFieldRef.current.executeCommand(["insert", latexSnippet]);
           const updatedLatex = mathFieldRef.current.getValue("latex");
           const updatedPlain = latexToMathjs(updatedLatex);
@@ -131,9 +160,10 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
 
     return () => {
       mf.removeEventListener("input", handleInput);
+      mf.removeEventListener("click", handleFieldClick, { capture: true });
       if (onInsertRef) onInsertRef.current = null;
     };
-  }, [onChange, onInsertRef, editorMode, textInput]);
+  }, [onChange, onInsertRef, editorMode, textInput, configureNativeKeyboard]);
 
   const handleUndo = () => {
     if (editorMode === "visual" && mathFieldRef.current) {
@@ -247,6 +277,8 @@ export const MathLiveEditor: React.FC<MathLiveEditorProps> = ({
           <div className="relative rounded-xl shadow-xs transition-all">
             <math-field
               ref={mathFieldRef}
+              onPointerDown={() => configureNativeKeyboard(false)}
+              onFocus={() => configureNativeKeyboard(false)}
               class="w-full rounded-lg border border-[#D3D3D0] bg-white px-4 py-3.5 text-xl text-[#2F3437] sm:text-2xl min-h-[64px] focus:outline-none focus:ring-2 focus:ring-[#6D28D9]/20 focus:border-[#6D28D9]"
               aria-label="Editor rumus matematika"
             />
