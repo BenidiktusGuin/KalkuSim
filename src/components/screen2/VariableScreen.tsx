@@ -13,6 +13,7 @@ import React from 'react';
 import { ArrowLeft, Play, Edit3 } from 'lucide-react';
 import { FormulaDisplay } from '../common/FormulaDisplay';
 import { VariableTable } from './VariableTable';
+import type { PasteResult } from '../../engine/clipboardPaste';
 import type { BatchRow, FormulaAnalysis } from '../../types';
 
 interface VariableScreenProps {
@@ -23,6 +24,11 @@ interface VariableScreenProps {
   onRemoveRow: (rowId: string) => void;
   onDuplicateRow: (rowId: string) => void;
   onClearRows: () => void;
+  onPasteBlock: (
+    startRowId: string,
+    startVariableIndex: number,
+    matrix: string[][]
+  ) => PasteResult;
   onBack: () => void;
   onCalculate: () => void;
 }
@@ -41,6 +47,7 @@ export const VariableScreen: React.FC<VariableScreenProps> = ({
   onRemoveRow,
   onDuplicateRow,
   onClearRows,
+  onPasteBlock,
   onBack,
   onCalculate,
 }) => {
@@ -49,9 +56,6 @@ export const VariableScreen: React.FC<VariableScreenProps> = ({
       <header className="space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D28D9]">
-              Langkah 2 — Variabel
-            </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#2F3437] sm:text-4xl">
               Masukkan nilai
             </h1>
@@ -80,6 +84,7 @@ export const VariableScreen: React.FC<VariableScreenProps> = ({
         onRemoveRow={onRemoveRow}
         onDuplicateRow={onDuplicateRow}
         onClearRows={onClearRows}
+        onPasteBlock={onPasteBlock}
       />
 
       <div className="flex flex-col-reverse gap-4 border-t border-[#E9E9E7] pt-6 sm:flex-row sm:items-center sm:justify-between">

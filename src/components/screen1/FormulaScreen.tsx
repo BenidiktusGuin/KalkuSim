@@ -56,9 +56,6 @@ export const FormulaScreen: React.FC<FormulaScreenProps> = ({
   return (
     <div className="space-y-10">
       <header className="max-w-2xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D28D9]">
-          Langkah 1 — Rumus
-        </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#2F3437] sm:text-4xl">
           Tentukan rumus
         </h1>

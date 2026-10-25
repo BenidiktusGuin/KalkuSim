@@ -10,14 +10,18 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header } from './components/common/Header';
 import { HistoryDrawer } from './components/common/HistoryDrawer';
+import { StepTransition } from './components/common/StepTransition';
+import type { StepDirection } from './components/common/StepTransition';
 import { FormulaScreen } from './components/screen1/FormulaScreen';
 import { VariableScreen } from './components/screen2/VariableScreen';
 import { ResultsScreen } from './components/screen3/ResultsScreen';
 import { parseFormula } from './engine/formulaParser';
 import { calculateBatch } from './engine/calculator';
+import { applyPasteBlock } from './engine/clipboardPaste';
+import type { PasteResult } from './engine/clipboardPaste';
 import type { AngleMode, BatchRow, CalculationBatchResult, HistoryItem, ScreenStep } from './types';
 
 const LOCAL_STORAGE_HISTORY_KEY = 'calcbatch_history_v1';
@@ -27,6 +31,9 @@ const STEPS: Array<{ id: ScreenStep; label: string }> = [
   { id: 'variables', label: 'Variabel' },
   { id: 'results', label: 'Hasil' },
 ];
+
+const getStepIndex = (step: ScreenStep): number =>
+  STEPS.findIndex((item) => item.id === step);
 
 interface StepIndicatorProps {
   currentStep: ScreenStep;
@@ -98,8 +105,24 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 export const App: React.FC = () => {
   // Navigation
   const [currentStep, setCurrentStep] = useState<ScreenStep>('formula');
+  const [stepDirection, setStepDirection] = useState<StepDirection>('forward');
+  const lastStepRef = useRef<ScreenStep>('formula');
   const [angleMode, setAngleMode] = useState<AngleMode>('rad');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  // Arah transisi mengikuti urutan langkah, bukan asal tombol yang diklik.
+  const navigateToStep = useCallback((nextStep: ScreenStep) => {
+    const previousStep = lastStepRef.current;
+    if (previousStep === nextStep) return;
+
+    lastStepRef.current = nextStep;
+    setStepDirection(
+      getStepIndex(nextStep) > getStepIndex(previousStep)
+        ? 'forward'
+        : 'backward'
+    );
+    setCurrentStep(nextStep);
+  }, []);
 
   // Formula state
   const [formulaInput, setFormulaInput] = useState<string>('');
@@ -192,6 +215,28 @@ export const App: React.FC = () => {
     );
   };
 
+  // Tempel blok data dari Excel/Sheets mulai dari sel yang dipilih
+  const handlePasteBlock = (
+    startRowId: string,
+    startVariableIndex: number,
+    matrix: string[][]
+  ): PasteResult => {
+    const result = applyPasteBlock({
+      rows,
+      inputVariables: analysis.inputVariables,
+      startRowId,
+      startVariableIndex,
+      matrix,
+      maxRows: 10,
+    });
+
+    if (result.applied) {
+      setRows(result.rows);
+    }
+
+    return result;
+  };
+
   // Formula input change
   const handleFormulaChange = (plain: string, latex: string) => {
     setFormulaInput(plain);
@@ -201,7 +246,7 @@ export const App: React.FC = () => {
   // Navigation handlers
   const handleNextToVariables = () => {
     if (analysis.isValid) {
-      setCurrentStep('variables');
+      navigateToStep('variables');
     }
   };
 
@@ -209,7 +254,7 @@ export const App: React.FC = () => {
     if (!analysis.isValid) return;
     const result = calculateBatch(analysis, rows, angleMode);
     setBatchResult(result);
-    setCurrentStep('results');
+    navigateToStep('results');
   };
 
   const handleNewCalculation = () => {
@@ -221,7 +266,7 @@ export const App: React.FC = () => {
       { id: `row-${Date.now()}-3`, values: {} },
     ]);
     setBatchResult(null);
-    setCurrentStep('formula');
+    navigateToStep('formula');
   };
 
   // History management
@@ -258,7 +303,7 @@ export const App: React.FC = () => {
       results: item.results,
       calculatedAt: item.timestamp,
     });
-    setCurrentStep('results');
+    navigateToStep('results');
     setIsHistoryOpen(false);
   };
 
@@ -297,49 +342,56 @@ export const App: React.FC = () => {
             canOpenVariables={analysis.isValid}
             canOpenResults={batchResult !== null}
             onChange={(step) => {
-              if (step === 'formula') setCurrentStep('formula');
-              if (step === 'variables' && analysis.isValid) setCurrentStep('variables');
-              if (step === 'results' && batchResult !== null) setCurrentStep('results');
+              if (step === 'formula') navigateToStep('formula');
+              if (step === 'variables' && analysis.isValid) {
+                navigateToStep('variables');
+              }
+              if (step === 'results' && batchResult !== null) {
+                navigateToStep('results');
+              }
             }}
           />
 
-          {currentStep === 'formula' && (
-            <FormulaScreen
-              formulaInput={formulaInput}
-              latexInput={latexInput}
-              onFormulaChange={handleFormulaChange}
-              analysis={analysis}
-              onNext={handleNextToVariables}
-              angleMode={angleMode}
-              onToggleAngleMode={() =>
-                setAngleMode((prev) => (prev === 'rad' ? 'deg' : 'rad'))
-              }
-            />
-          )}
+          <StepTransition key={currentStep} direction={stepDirection}>
+            {currentStep === 'formula' && (
+              <FormulaScreen
+                formulaInput={formulaInput}
+                latexInput={latexInput}
+                onFormulaChange={handleFormulaChange}
+                analysis={analysis}
+                onNext={handleNextToVariables}
+                angleMode={angleMode}
+                onToggleAngleMode={() =>
+                  setAngleMode((prev) => (prev === 'rad' ? 'deg' : 'rad'))
+                }
+              />
+            )}
 
-          {currentStep === 'variables' && (
-            <VariableScreen
-              analysis={analysis}
-              rows={rows}
-              onUpdateCell={handleUpdateCell}
-              onAddRow={handleAddRow}
-              onRemoveRow={handleRemoveRow}
-              onDuplicateRow={handleDuplicateRow}
-              onClearRows={handleClearRows}
-              onBack={() => setCurrentStep('formula')}
-              onCalculate={handleCalculateBatch}
-            />
-          )}
+            {currentStep === 'variables' && (
+              <VariableScreen
+                analysis={analysis}
+                rows={rows}
+                onUpdateCell={handleUpdateCell}
+                onAddRow={handleAddRow}
+                onRemoveRow={handleRemoveRow}
+                onDuplicateRow={handleDuplicateRow}
+                onClearRows={handleClearRows}
+                onPasteBlock={handlePasteBlock}
+                onBack={() => navigateToStep('formula')}
+                onCalculate={handleCalculateBatch}
+              />
+            )}
 
-          {currentStep === 'results' && batchResult && (
-            <ResultsScreen
-              batch={batchResult}
-              onNewCalculation={handleNewCalculation}
-              onEditInputs={() => setCurrentStep('variables')}
-              onSaveToHistory={handleSaveToHistory}
-              isAlreadySaved={isCurrentBatchSaved}
-            />
-          )}
+            {currentStep === 'results' && batchResult && (
+              <ResultsScreen
+                batch={batchResult}
+                onNewCalculation={handleNewCalculation}
+                onEditInputs={() => navigateToStep('variables')}
+                onSaveToHistory={handleSaveToHistory}
+                isAlreadySaved={isCurrentBatchSaved}
+              />
+            )}
+          </StepTransition>
         </div>
       </main>
 

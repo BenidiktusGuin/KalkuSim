@@ -31,6 +31,22 @@ describe('calculateBatch', () => {
     expect(batch.results[2].formattedResult).toBe('51');
   });
 
+  it('menerima nilai desimal, koma desimal, dan pecahan pada sel variabel', () => {
+    const analysis = parseFormula('y = a * 2');
+    const rows: BatchRow[] = [
+      { id: '1', values: { a: '0,5' } },
+      { id: '2', values: { a: '1/2' } },
+      { id: '3', values: { a: '1.234,5' } },
+    ];
+
+    const batch = calculateBatch(analysis, rows);
+
+    expect(batch.results.every((result) => result.isSuccess)).toBe(true);
+    expect(batch.results[0].rawResult).toBeCloseTo(1);
+    expect(batch.results[1].rawResult).toBeCloseTo(1);
+    expect(batch.results[2].rawResult).toBeCloseTo(2469);
+  });
+
   it('isolates errors on individual rows without failing other valid rows', () => {
     const analysis = parseFormula('r = a / b');
     const rows: BatchRow[] = [

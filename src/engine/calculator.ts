@@ -1,4 +1,5 @@
 import { evaluate, isComplex } from 'mathjs';
+import { parseNumericInput } from './numberInput';
 import type { AngleMode, BatchRow, CalculationBatchResult, FormulaAnalysis, RowResult } from '../types';
 
 /**
@@ -101,12 +102,12 @@ export function calculateBatch(
         continue;
       }
 
-      // Cek apakah angka valid
-      const num = Number(rawVal);
-      if (isNaN(num)) {
+      // Cek apakah angka riil valid (bulat, desimal, pecahan, atau ekspresi aman)
+      const num = parseNumericInput(rawVal);
+      if (num === null) {
         rowInputs[v] = null;
         if (!validationError) {
-          validationError = `"${rawVal}" bukan angka yang valid untuk "${v}"`;
+          validationError = `"${rawVal}" bukan angka yang valid untuk "${v}". Gunakan angka, desimal (0,5), atau pecahan (1/2).`;
         }
       } else {
         rowInputs[v] = num;

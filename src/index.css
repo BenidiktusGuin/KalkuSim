@@ -78,6 +78,11 @@ math-field::part(virtual-keyboard-toggle) {
   display: none;
 }
 
+/* * Sembunyikan tombol menu (ikon garis tiga) bawaan MathLive */
+math-field::part(menu-toggle) {
+  display: none;
+}
+
 /* * Tampilan rumus matematika baca-saja */
 math-field.formula-display-field {
   display: block;
@@ -176,4 +181,135 @@ math-field.math-inline-field:focus-within {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #b5b5b2;
+}
+
+/* ==========================================================================
+   Motion system
+   ========================================================================== */
+
+@keyframes step-enter-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(10px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes step-enter-backward {
+  from {
+    opacity: 0;
+    transform: translate3d(-10px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.step-transition {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.step-transition--forward {
+  animation-name: step-enter-forward;
+}
+
+.step-transition--backward {
+  animation-name: step-enter-backward;
+}
+
+@keyframes row-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes row-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.row-enter {
+  animation: row-enter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.row-exit {
+  pointer-events: none;
+  animation: row-exit 180ms ease-in both;
+}
+
+@keyframes cell-paste-highlight {
+  from {
+    background-color: rgba(109, 40, 217, 0.12);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.cell-updated {
+  animation: cell-paste-highlight 700ms ease-out;
+}
+
+/*
+ * Fallback focus indicator for buttons that do not already use a custom
+ * focus-visible ring. Buttons with `focus:outline-none` keep their existing
+ * Tailwind ring because utilities are layered after this base rule.
+ */
+@layer base {
+  button:focus-visible {
+    outline: 2px solid #6d28d9;
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * Unlayered on purpose: keeps `transform` in the transition even when a button
+ * also has Tailwind's `transition-colors` utility.
+ */
+button:not(:disabled) {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease,
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-transition,
+  .row-enter,
+  .row-exit {
+    animation: none;
+  }
+
+  .cell-updated {
+    animation: none;
+    background-color: rgba(109, 40, 217, 0.1);
+  }
+
+  button:not(:disabled) {
+    transition: none;
+  }
+
+  button:not(:disabled):active {
+    transform: none;
+  }
 }

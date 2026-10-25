@@ -64,9 +64,6 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       <header className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D28D9]">
-              Langkah 3 — Hasil
-            </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#2F3437] sm:text-4xl">
               Hasil perhitungan
             </h1>
